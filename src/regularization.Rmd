@@ -1,0 +1,91 @@
+---
+title: "Regularization"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(latex2exp)
+```
+
+Regularization is thought of as an advanced concept in machine learning, but I think it can be understood with some basic concepts.
+
+Nearly all applications of predictive modelling involve a *response* variable (or *target*) and one or more *explanatory* variables (or *features*). The simplest case we usually bother to consider is when there is just a single explanatory feature. This is called simple linear regression. But to understand regularization, I think it helps to start with something even simpler: zero explanatory variables. All we have is a response variable.
+
+For example, say we want to predict the 1/4-mile time of a car, using times from a sample of representative cars. Since we can't use information from other variables to inform the prediction, the best prediction we can make is the expected value of the response variable, namely its sample mean, $\bar{x}$.
+
+```{r}
+xhat <- mean(mtcars$qsec)
+latex_expression <- paste("$\\bar{x} = ", xhat, "$")
+mtcars %>% 
+  ggplot() +
+  geom_histogram(aes(x = qsec), breaks = seq(14, 23, 1)) +
+  geom_vline(aes(xintercept = xhat), color = "blue") +
+  annotate(
+    geom = 'text', 
+    x = xhat + 1, 
+    y = 8, 
+    color = "blue",
+    label = TeX(latex_expression), 
+    parse = TRUE
+  ) +
+  labs(
+    title = "Distribution of 1/4-mile times for a sample of cars",
+    x = "1/4-mile time (seconds)",
+    y = "Count"
+  ) +
+  scale_x_continuous(
+    limits = c(14, 23),
+    breaks = seq(14, 23, 1)
+  ) +
+  scale_y_continuous(breaks = 0:10) +
+  theme_light()
+```
+
+This may seem trivial, but it's not nothing! In fact, many data scientists use just such a model as a common-sense baseline when they're trying to build the best possible model. Believe it or not, it is common in many domains for more "sophisticated" models to barely outperform the common-sense baseline.
+
+Still, if we could use more explanatory variables, it would be a foolish not to at least try them out. So imagine now that we have access to a new explanatory variable, miles per gallon.
+
+
+```{r}
+mtcars %>% 
+  ggplot() +
+  geom_point(
+    aes(x = mpg, y = qsec)
+  ) +
+  theme_light()
+```
+
+The standard way to use this variable in our model is to learn the formula for a line that minimizes the distance to each of the data points. As you may recall, the formula for a line has two main components, the slope and the $y$-intercept. In simple linear regression, the slope is usually referred to as $beta1$ and the $y$-intercept is referred to as $beta0$.
+
+$$f(x) = \beta_0 + \beta_1 x$$
+
+$$\sum_1^j(f(x_j) - y_j)^2$$
+
+There are many ways to find these values, but a simple one is to first find $\beta_1$ (the slope) by dividing the covariance of $x$ and $x$ by the variance of $x$, like so:
+
+$$\frac{Cov(x,y)}{Var(x)} $$
+
+```{r}
+(beta1 <- cov(mtcars$mpg, mtcars$qsec) / var(mtcars$mpg))
+```
+
+To find $\beta_0$, we assume that the line will pass through the *center of mass point* $(\bar{x}, \bar{y})$, then plug those coordinates into our function and solve for $\beta_0$.
+
+$$\bar{y} = \beta_0 + 0.1241366\bar{x}$$
+
+$$\beta_0 = \bar{y} - 0.1241366\bar{x}$$
+
+```{r}
+
+(beta0 <- mean(mtcars$qsec) - beta1*mean(mtcars$mpg))
+```
+
+```{r}
+lm(qsec~mpg, mtcars)
+```
+
